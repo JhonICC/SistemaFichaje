@@ -3,22 +3,24 @@ from datetime import datetime
 import json
 import csv
 import os
+import winsound
 
-# Cargar empleados desde JSON
+# ------------------------
+# CONFIGURACIÓN DE DATOS
+# ------------------------
 with open("empleados.json", "r", encoding="utf-8") as f:
     empleados = json.load(f)
 
 CSV_FILE = "fichaje.csv"
 
-# Crear CSV con encabezados si no existe
 if not os.path.exists(CSV_FILE):
     with open(CSV_FILE, "w", newline='', encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow(["fecha", "hora", "id", "nombre", "accion"])
 
-# -------------------------------
+# ------------------------
 # FUNCIONES DE NEGOCIO
-# -------------------------------
+# ------------------------
 def buscar_empleado(id_input):
     for emp in empleados:
         if emp["id"] == id_input:
@@ -44,10 +46,14 @@ def registrar_fichaje(id_input, nombre, accion):
         writer = csv.writer(file)
         writer.writerow([fecha, hora, id_input, nombre, accion])
 
-# -------------------------------
+# ------------------------
 # FUNCIONES DE LA INTERFAZ
-# -------------------------------
+# ------------------------
+def beep():
+    winsound.Beep(1000, 100)  # beep simple, cambiar por PlaySound si tienes un .wav
+
 def procesar_id():
+    beep()
     user_id = entry_id.get()
     empleado = buscar_empleado(user_id)
     if not empleado:
@@ -61,39 +67,38 @@ def procesar_id():
         mostrar_opciones_fichaje(user_id, nombre, modo="entrada")
 
 def mostrar_opciones_fichaje(id_input, nombre, modo):
-    # Limpia la pantalla
     limpiar_interfaz()
+    frame_opciones = tk.Frame(root, bg="#34495e")
+    frame_opciones.pack(pady=20)
     
+    lbl_info = tk.Label(frame_opciones, text=f"Hola {nombre}", font=("Helvetica", 22), bg="#34495e", fg="white")
+    lbl_info.grid(row=0, column=0, columnspan=3, pady=10)
+
+    # Simular misma distribución que el teclado (3 columnas)
     if modo == "entrada":
-        lbl_info = tk.Label(root, text=f"Hola {nombre}\n¿Fichar Entrada?", font=("Helvetica", 20), bg="#34495e", fg="white")
-        lbl_info.pack(pady=20)
-        btn_entrada = tk.Button(root, text="Entrada", font=("Helvetica", 18), bg="#27ae60", fg="white",
-                                 width=10, height=2,
-                                 command=lambda: confirmar_fichaje(id_input, nombre, "Entrada"))
-        btn_entrada.pack(pady=10)
-    elif modo == "salida":
-        lbl_info = tk.Label(root, text=f"Hola {nombre}\n¿Fichar Salida?", font=("Helvetica", 20), bg="#34495e", fg="white")
-        lbl_info.pack(pady=20)
-        btn_salida = tk.Button(root, text="Salida", font=("Helvetica", 18), bg="#2980b9", fg="white",
-                               width=10, height=2,
-                               command=lambda: confirmar_fichaje(id_input, nombre, "Salida"))
-        btn_salida.pack(pady=10)
-    
-    # Botón para volver atrás
-    btn_atras = tk.Button(root, text="Atrás", font=("Helvetica", 16), bg="#e67e22", fg="white",
-                          command=volver_a_teclado)
-    btn_atras.pack(pady=20)
+        tk.Label(frame_opciones, bg="#34495e", width=8).grid(row=1, column=0)  # vacío para centrar
+        tk.Button(frame_opciones, text="Entrada", font=("Helvetica", 20), bg="#27ae60", fg="white",
+                  width=8, height=2, command=lambda: (beep(), confirmar_fichaje(id_input, nombre, "Entrada"))
+        ).grid(row=1, column=1, padx=20, pady=20)
+    else:
+        tk.Label(frame_opciones, bg="#34495e", width=8).grid(row=1, column=0)
+        tk.Button(frame_opciones, text="Salida", font=("Helvetica", 20), bg="#2980b9", fg="white",
+                  width=8, height=2, command=lambda: (beep(), confirmar_fichaje(id_input, nombre, "Salida"))
+        ).grid(row=1, column=1, padx=20, pady=20)
+
+    tk.Button(frame_opciones, text="Atrás", font=("Helvetica", 20), bg="#e67e22", fg="white",
+              width=8, height=2, command=lambda: (beep(), volver_a_teclado())
+    ).grid(row=1, column=2, padx=20, pady=20)
 
 def confirmar_fichaje(id_input, nombre, accion):
     registrar_fichaje(id_input, nombre, accion)
     mostrar_resultado(f"✅ {accion} registrada\npara {nombre}", "#2ecc71")
-    # Volver automáticamente a teclado tras unos segundos
     root.after(2000, volver_a_teclado)
 
 def mostrar_resultado(mensaje, color):
     limpiar_interfaz()
-    lbl_resultado = tk.Label(root, text=mensaje, font=("Helvetica", 20), bg="#34495e", fg=color)
-    lbl_resultado.pack(pady=30)
+    lbl_resultado = tk.Label(root, text=mensaje, font=("Helvetica", 22), bg="#34495e", fg=color)
+    lbl_resultado.pack(pady=40)
 
 def volver_a_teclado():
     limpiar_interfaz()
@@ -103,13 +108,15 @@ def limpiar_interfaz():
     for widget in root.winfo_children():
         widget.destroy()
 
-# -------------------------------
+# ------------------------
 # TECLADO NUMÉRICO
-# -------------------------------
+# ------------------------
 def escribir_numero(num):
+    beep()
     entry_id.insert(tk.END, str(num))
 
 def corregir():
+    beep()
     contenido = entry_id.get()
     entry_id.delete(0, tk.END)
     entry_id.insert(0, contenido[:-1])
@@ -138,7 +145,7 @@ def construir_teclado():
     tk.Button(frame_teclado, text="OK", width=5, height=2, font=("Helvetica", 20, "bold"),
               bg="#27ae60", fg="white", command=procesar_id).grid(row=3, column=2, padx=8, pady=8)
 
-# -------------------------------
+# ------------------------
 # INICIAR APP
 root = tk.Tk()
 root.title("Sistema de Fichajes")
