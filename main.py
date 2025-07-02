@@ -1,27 +1,111 @@
 import tkinter as tk
 from datetime import datetime
 import json
+import csv
+import os
 
+# Cargar empleados desde JSON
 with open("empleados.json", "r", encoding="utf-8") as f:
     empleados = json.load(f)
 
+CSV_FILE = "fichaje.csv"
+
+# Crear CSV con encabezados si no existe
+if not os.path.exists(CSV_FILE):
+    with open(CSV_FILE, "w", newline='', encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["fecha", "hora", "id", "nombre", "accion"])
+
+# -------------------------------
+# FUNCIONES DE NEGOCIO
+# -------------------------------
 def buscar_empleado(id_input):
     for emp in empleados:
         if emp["id"] == id_input:
             return emp
     return None
 
+def verificar_si_ya_ficho_entrada_hoy(id_input):
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    try:
+        with open(CSV_FILE, "r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row["fecha"] == hoy and row["id"] == id_input and row["accion"] == "Entrada":
+                    return True
+    except:
+        pass
+    return False
+
+def registrar_fichaje(id_input, nombre, accion):
+    fecha = datetime.now().strftime("%Y-%m-%d")
+    hora = datetime.now().strftime("%H:%M:%S")
+    with open(CSV_FILE, "a", newline='', encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow([fecha, hora, id_input, nombre, accion])
+
+# -------------------------------
+# FUNCIONES DE LA INTERFAZ
+# -------------------------------
 def procesar_id():
     user_id = entry_id.get()
     empleado = buscar_empleado(user_id)
     if not empleado:
-        lbl_resultado.config(text="⚠️ ID no encontrado", fg="red")
-    else:
-        nombre = empleado["nombre"]
-        hora = datetime.now().strftime("%H:%M:%S")
-        lbl_resultado.config(text=f"✅ Fichaje: {nombre} a las {hora}", fg="#2ecc71")
-    entry_id.delete(0, tk.END)
+        mostrar_resultado("⚠️ ID no encontrado", "red")
+        return
 
+    nombre = empleado["nombre"]
+    if verificar_si_ya_ficho_entrada_hoy(user_id):
+        mostrar_opciones_fichaje(user_id, nombre, modo="salida")
+    else:
+        mostrar_opciones_fichaje(user_id, nombre, modo="entrada")
+
+def mostrar_opciones_fichaje(id_input, nombre, modo):
+    # Limpia la pantalla
+    limpiar_interfaz()
+    
+    if modo == "entrada":
+        lbl_info = tk.Label(root, text=f"Hola {nombre}\n¿Fichar Entrada?", font=("Helvetica", 20), bg="#34495e", fg="white")
+        lbl_info.pack(pady=20)
+        btn_entrada = tk.Button(root, text="Entrada", font=("Helvetica", 18), bg="#27ae60", fg="white",
+                                 width=10, height=2,
+                                 command=lambda: confirmar_fichaje(id_input, nombre, "Entrada"))
+        btn_entrada.pack(pady=10)
+    elif modo == "salida":
+        lbl_info = tk.Label(root, text=f"Hola {nombre}\n¿Fichar Salida?", font=("Helvetica", 20), bg="#34495e", fg="white")
+        lbl_info.pack(pady=20)
+        btn_salida = tk.Button(root, text="Salida", font=("Helvetica", 18), bg="#2980b9", fg="white",
+                               width=10, height=2,
+                               command=lambda: confirmar_fichaje(id_input, nombre, "Salida"))
+        btn_salida.pack(pady=10)
+    
+    # Botón para volver atrás
+    btn_atras = tk.Button(root, text="Atrás", font=("Helvetica", 16), bg="#e67e22", fg="white",
+                          command=volver_a_teclado)
+    btn_atras.pack(pady=20)
+
+def confirmar_fichaje(id_input, nombre, accion):
+    registrar_fichaje(id_input, nombre, accion)
+    mostrar_resultado(f"✅ {accion} registrada\npara {nombre}", "#2ecc71")
+    # Volver automáticamente a teclado tras unos segundos
+    root.after(2000, volver_a_teclado)
+
+def mostrar_resultado(mensaje, color):
+    limpiar_interfaz()
+    lbl_resultado = tk.Label(root, text=mensaje, font=("Helvetica", 20), bg="#34495e", fg=color)
+    lbl_resultado.pack(pady=30)
+
+def volver_a_teclado():
+    limpiar_interfaz()
+    construir_teclado()
+
+def limpiar_interfaz():
+    for widget in root.winfo_children():
+        widget.destroy()
+
+# -------------------------------
+# TECLADO NUMÉRICO
+# -------------------------------
 def escribir_numero(num):
     entry_id.insert(tk.END, str(num))
 
@@ -30,43 +114,34 @@ def corregir():
     entry_id.delete(0, tk.END)
     entry_id.insert(0, contenido[:-1])
 
-# ---------- INTERFAZ PERSONALIZADA ----------
+def construir_teclado():
+    global entry_id
+    entry_id = tk.Entry(root, font=("Helvetica", 28), justify="center", bg="#ecf0f1", fg="#2c3e50")
+    entry_id.pack(pady=20)
+    
+    frame_teclado = tk.Frame(root, bg="#34495e")
+    frame_teclado.pack()
+    
+    botones = [
+        ('1', 0, 0), ('2', 0, 1), ('3', 0, 2),
+        ('4', 1, 0), ('5', 1, 1), ('6', 1, 2),
+        ('7', 2, 0), ('8', 2, 1), ('9', 2, 2),
+        ('0', 3, 1)
+    ]
+    for (texto, fila, col) in botones:
+        tk.Button(frame_teclado, text=texto, width=5, height=2, font=("Helvetica", 20, "bold"),
+                  bg="#2980b9", fg="white", activebackground="#3498db",
+                  command=lambda t=texto: escribir_numero(t)).grid(row=fila, column=col, padx=8, pady=8)
+
+    tk.Button(frame_teclado, text="←", width=5, height=2, font=("Helvetica", 20, "bold"),
+              bg="#e67e22", fg="white", command=corregir).grid(row=3, column=0, padx=8, pady=8)
+    tk.Button(frame_teclado, text="OK", width=5, height=2, font=("Helvetica", 20, "bold"),
+              bg="#27ae60", fg="white", command=procesar_id).grid(row=3, column=2, padx=8, pady=8)
+
+# -------------------------------
+# INICIAR APP
 root = tk.Tk()
 root.title("Sistema de Fichajes")
-root.configure(bg="#84c1fa")  # fondo general
-
-# Entry
-entry_id = tk.Entry(root, font=("Helvetica", 28), justify="center", bg="#ecf0f1", fg="#000000")
-entry_id.pack(pady=20)
-
-# Teclado numérico
-frame_teclado = tk.Frame(root, bg="#0300a8")
-frame_teclado.pack()
-
-botones = [
-    ('1', 0, 0), ('2', 0, 1), ('3', 0, 2),
-    ('4', 1, 0), ('5', 1, 1), ('6', 1, 2),
-    ('7', 2, 0), ('8', 2, 1), ('9', 2, 2),
-    ('0', 3, 1)
-]
-
-for (texto, fila, col) in botones:
-    tk.Button(frame_teclado, text=texto, width=5, height=2, font=("Helvetica", 20, "bold"),
-              bg="#2980b9", fg="white", activebackground="#3498db", activeforeground="white",
-              command=lambda t=texto: escribir_numero(t)).grid(row=fila, column=col, padx=8, pady=8)
-
-# Botón Corregir
-tk.Button(frame_teclado, text="←", width=5, height=2, font=("Helvetica", 20, "bold"),
-          bg="#e67e22", fg="white", activebackground="#d35400",
-          command=corregir).grid(row=3, column=0, padx=8, pady=8)
-
-# Botón OK
-tk.Button(frame_teclado, text="OK", width=5, height=2, font=("Helvetica", 20, "bold"),
-          bg="#27ae60", fg="white", activebackground="#2ecc71",
-          command=procesar_id).grid(row=3, column=2, padx=8, pady=8)
-
-# Resultado
-lbl_resultado = tk.Label(root, text="", font=("Helvetica", 16), bg="#34495e", fg="white")
-lbl_resultado.pack(pady=20)
-
+root.configure(bg="#34495e")
+construir_teclado()
 root.mainloop()
