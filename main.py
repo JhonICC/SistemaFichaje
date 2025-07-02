@@ -50,7 +50,7 @@ def registrar_fichaje(id_input, nombre, accion):
 # FUNCIONES DE LA INTERFAZ
 # ------------------------
 def beep():
-    winsound.Beep(1000, 100)  # beep simple, cambiar por PlaySound si tienes un .wav
+    winsound.Beep(1000, 100)  # beep simple, puedes cambiar por un wav con PlaySound
 
 def procesar_id():
     beep()
@@ -68,25 +68,25 @@ def procesar_id():
 
 def mostrar_opciones_fichaje(id_input, nombre, modo):
     limpiar_interfaz()
-    frame_opciones = tk.Frame(root, bg="#34495e")
-    frame_opciones.pack(pady=20)
-    
-    lbl_info = tk.Label(frame_opciones, text=f"Hola {nombre}", font=("Helvetica", 22), bg="#34495e", fg="white")
+    global frame_main
+    frame_main = tk.Frame(root, bg="#34495e")
+    frame_main.pack(expand=True)
+
+    lbl_info = tk.Label(frame_main, text=f"Hola {nombre}", font=("Helvetica", 22), bg="#34495e", fg="white")
     lbl_info.grid(row=0, column=0, columnspan=3, pady=10)
 
-    # Simular misma distribución que el teclado (3 columnas)
     if modo == "entrada":
-        tk.Label(frame_opciones, bg="#34495e", width=8).grid(row=1, column=0)  # vacío para centrar
-        tk.Button(frame_opciones, text="Entrada", font=("Helvetica", 20), bg="#27ae60", fg="white",
+        tk.Label(frame_main, bg="#34495e", width=8).grid(row=1, column=0)
+        tk.Button(frame_main, text="Entrada", font=("Helvetica", 20), bg="#27ae60", fg="white",
                   width=8, height=2, command=lambda: (beep(), confirmar_fichaje(id_input, nombre, "Entrada"))
         ).grid(row=1, column=1, padx=20, pady=20)
     else:
-        tk.Label(frame_opciones, bg="#34495e", width=8).grid(row=1, column=0)
-        tk.Button(frame_opciones, text="Salida", font=("Helvetica", 20), bg="#2980b9", fg="white",
+        tk.Label(frame_main, bg="#34495e", width=8).grid(row=1, column=0)
+        tk.Button(frame_main, text="Salida", font=("Helvetica", 20), bg="#2980b9", fg="white",
                   width=8, height=2, command=lambda: (beep(), confirmar_fichaje(id_input, nombre, "Salida"))
         ).grid(row=1, column=1, padx=20, pady=20)
 
-    tk.Button(frame_opciones, text="Atrás", font=("Helvetica", 20), bg="#e67e22", fg="white",
+    tk.Button(frame_main, text="Atrás", font=("Helvetica", 20), bg="#e67e22", fg="white",
               width=8, height=2, command=lambda: (beep(), volver_a_teclado())
     ).grid(row=1, column=2, padx=20, pady=20)
 
@@ -97,7 +97,10 @@ def confirmar_fichaje(id_input, nombre, accion):
 
 def mostrar_resultado(mensaje, color):
     limpiar_interfaz()
-    lbl_resultado = tk.Label(root, text=mensaje, font=("Helvetica", 22), bg="#34495e", fg=color)
+    global frame_main
+    frame_main = tk.Frame(root, bg="#34495e")
+    frame_main.pack(expand=True)
+    lbl_resultado = tk.Label(frame_main, text=mensaje, font=("Helvetica", 22), bg="#34495e", fg=color)
     lbl_resultado.pack(pady=40)
 
 def volver_a_teclado():
@@ -122,11 +125,14 @@ def corregir():
     entry_id.insert(0, contenido[:-1])
 
 def construir_teclado():
-    global entry_id
-    entry_id = tk.Entry(root, font=("Helvetica", 28), justify="center", bg="#ecf0f1", fg="#2c3e50")
+    global entry_id, frame_main
+    frame_main = tk.Frame(root, bg="#34495e")
+    frame_main.pack(expand=True)
+
+    entry_id = tk.Entry(frame_main, font=("Helvetica", 28), justify="center", bg="#ecf0f1", fg="#2c3e50")
     entry_id.pack(pady=20)
     
-    frame_teclado = tk.Frame(root, bg="#34495e")
+    frame_teclado = tk.Frame(frame_main, bg="#34495e")
     frame_teclado.pack()
     
     botones = [
@@ -150,5 +156,7 @@ def construir_teclado():
 root = tk.Tk()
 root.title("Sistema de Fichajes")
 root.configure(bg="#34495e")
+root.geometry("600x500")  # ventana inicial
+root.minsize(500, 400)    # tamaño mínimo
 construir_teclado()
 root.mainloop()
