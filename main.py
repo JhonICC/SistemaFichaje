@@ -50,7 +50,7 @@ def registrar_fichaje(id_input, nombre, accion):
 # FUNCIONES DE LA INTERFAZ
 # ------------------------
 def beep():
-    winsound.Beep(1000, 100)  # beep simple, puedes cambiar por un wav con PlaySound
+    winsound.Beep(1000, 100)
 
 def procesar_id():
     beep()
@@ -58,6 +58,7 @@ def procesar_id():
     empleado = buscar_empleado(user_id)
     if not empleado:
         mostrar_resultado("⚠️ ID no encontrado", "red")
+        root.after(3000, volver_a_teclado)  # ← Espera 3 segundos y vuelve al teclado
         return
 
     nombre = empleado["nombre"]
@@ -156,7 +157,7 @@ def construir_teclado():
 root = tk.Tk()
 root.title("Sistema de Fichajes")
 root.configure(bg="#34495e")
-root.geometry("600x500")  # ventana inicial
-root.minsize(500, 400)    # tamaño mínimo
+root.geometry("600x500")
+root.minsize(500, 400)
 construir_teclado()
 root.mainloop()
