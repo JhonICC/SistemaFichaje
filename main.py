@@ -27,17 +27,26 @@ def buscar_empleado(id_input):
             return emp
     return None
 
-def verificar_si_ya_ficho_entrada_hoy(id_input):
+def obtener_estado_empleado(id_input):
     hoy = datetime.now().strftime("%Y-%m-%d")
+    acciones = []
     try:
         with open(CSV_FILE, "r", encoding="utf-8") as file:
             reader = csv.DictReader(file)
             for row in reader:
-                if row["fecha"] == hoy and row["id"] == id_input and row["accion"] == "Entrada":
-                    return True
+                if row["fecha"] == hoy and row["id"] == id_input:
+                    acciones.append(row["accion"])
     except:
         pass
-    return False
+
+    # Estado según la última acción registrada
+    ultimo = acciones[-1] if acciones else None
+
+    estado = {
+        "ultima": ultimo,
+        "acciones": acciones
+    }
+    return estado
 
 def registrar_fichaje(id_input, nombre, accion):
     fecha = datetime.now().strftime("%Y-%m-%d")
@@ -58,16 +67,26 @@ def procesar_id():
     empleado = buscar_empleado(user_id)
     if not empleado:
         mostrar_resultado("⚠️ ID no encontrado", "red")
-        root.after(3000, volver_a_teclado)  # ← Espera 3 segundos y vuelve al teclado
+        root.after(3000, volver_a_teclado)
         return
 
     nombre = empleado["nombre"]
-    if verificar_si_ya_ficho_entrada_hoy(user_id):
-        mostrar_opciones_fichaje(user_id, nombre, modo="salida")
-    else:
-        mostrar_opciones_fichaje(user_id, nombre, modo="entrada")
+    estado = obtener_estado_empleado(user_id)
+    ultima = estado["ultima"]
 
-def mostrar_opciones_fichaje(id_input, nombre, modo):
+    if ultima in [None, "Salida"]:
+        mostrar_opciones_fichaje(user_id, nombre, ["Entrada", "Atrás"])
+    elif ultima == "Entrada":
+        mostrar_opciones_fichaje(user_id, nombre, ["Descanso", "Salida", "Atrás"])
+    elif ultima == "Descanso":
+        mostrar_opciones_fichaje(user_id, nombre, ["Regreso", "Salida", "Atrás"])
+    elif ultima == "Regreso":
+        mostrar_opciones_fichaje(user_id, nombre, ["Salida", "Atrás"])
+    else:
+        mostrar_resultado("⚠️ Acción no válida", "red")
+        root.after(2000, volver_a_teclado)
+
+def mostrar_opciones_fichaje(id_input, nombre, acciones):
     limpiar_interfaz()
     global frame_main
     frame_main = tk.Frame(root, bg="#34495e")
@@ -76,25 +95,27 @@ def mostrar_opciones_fichaje(id_input, nombre, modo):
     lbl_info = tk.Label(frame_main, text=f"Hola {nombre}", font=("Helvetica", 22), bg="#34495e", fg="white")
     lbl_info.grid(row=0, column=0, columnspan=3, pady=10)
 
-    if modo == "entrada":
-        tk.Label(frame_main, bg="#34495e", width=8).grid(row=1, column=0)
-        tk.Button(frame_main, text="Entrada", font=("Helvetica", 20), bg="#27ae60", fg="white",
-                  width=8, height=2, command=lambda: (beep(), confirmar_fichaje(id_input, nombre, "Entrada"))
-        ).grid(row=1, column=1, padx=20, pady=20)
+    for i, accion in enumerate(acciones):
+        color = {
+            "Entrada": "#27ae60",
+            "Salida": "#2980b9",
+            "Descanso": "#f39c12",
+            "Regreso": "#8e44ad",
+            "Atrás": "#e67e22"
+        }.get(accion, "gray")
+
+        tk.Button(frame_main, text=accion, font=("Helvetica", 20), bg=color, fg="white",
+                  width=10, height=2,
+                  command=lambda a=accion: (beep(), manejar_accion(a, id_input, nombre))
+        ).grid(row=1, column=i, padx=10, pady=20)
+
+def manejar_accion(accion, id_input, nombre):
+    if accion == "Atrás":
+        volver_a_teclado()
     else:
-        tk.Label(frame_main, bg="#34495e", width=8).grid(row=1, column=0)
-        tk.Button(frame_main, text="Salida", font=("Helvetica", 20), bg="#2980b9", fg="white",
-                  width=8, height=2, command=lambda: (beep(), confirmar_fichaje(id_input, nombre, "Salida"))
-        ).grid(row=1, column=1, padx=20, pady=20)
-
-    tk.Button(frame_main, text="Atrás", font=("Helvetica", 20), bg="#e67e22", fg="white",
-              width=8, height=2, command=lambda: (beep(), volver_a_teclado())
-    ).grid(row=1, column=2, padx=20, pady=20)
-
-def confirmar_fichaje(id_input, nombre, accion):
-    registrar_fichaje(id_input, nombre, accion)
-    mostrar_resultado(f"✅ {accion} registrada\npara {nombre}", "#2ecc71")
-    root.after(2000, volver_a_teclado)
+        registrar_fichaje(id_input, nombre, accion)
+        mostrar_resultado(f"✅ {accion} registrada\npara {nombre}", "#2ecc71")
+        root.after(2000, volver_a_teclado)
 
 def mostrar_resultado(mensaje, color):
     limpiar_interfaz()
@@ -132,10 +153,10 @@ def construir_teclado():
 
     entry_id = tk.Entry(frame_main, font=("Helvetica", 28), justify="center", bg="#ecf0f1", fg="#2c3e50")
     entry_id.pack(pady=20)
-    
+
     frame_teclado = tk.Frame(frame_main, bg="#34495e")
     frame_teclado.pack()
-    
+
     botones = [
         ('1', 0, 0), ('2', 0, 1), ('3', 0, 2),
         ('4', 1, 0), ('5', 1, 1), ('6', 1, 2),
