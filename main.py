@@ -4,6 +4,10 @@ import json
 import csv
 import os
 import winsound
+from collections import defaultdict
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+import os
 
 # ------------------------
 # CONFIGURACIÓN DE DATOS
@@ -54,6 +58,61 @@ def registrar_fichaje(id_input, nombre, accion):
     with open(CSV_FILE, "a", newline='', encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow([fecha, hora, id_input, nombre, accion])
+
+def generar_resumen_diario():
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    resumen_path = f"Resumenes/resumen_{hoy}.xlsx"
+    fichajes_por_empleado = defaultdict(lambda: {
+        "nombre": "",
+        "acciones": {"Entrada": "", "Descanso": "", "Regreso": "", "Salida": ""}
+    })
+
+    # Leer fichajes
+    try:
+        with open(CSV_FILE, "r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row["fecha"] == hoy:
+                    id_emp = row["id"]
+                    fichajes_por_empleado[id_emp]["nombre"] = row["nombre"]
+                    fichajes_por_empleado[id_emp]["acciones"][row["accion"]] = row["hora"]
+    except FileNotFoundError:
+        print("⚠️ Archivo de fichajes no encontrado.")
+        return
+
+    # Crear archivo Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Resumen Diario"
+
+    headers = ["ID", "Nombre", "Entrada", "Descanso", "Regreso", "Salida"]
+    ws.append(headers)
+
+    for id_emp, datos in fichajes_por_empleado.items():
+        fila = [
+            id_emp,
+            datos["nombre"],
+            datos["acciones"]["Entrada"],
+            datos["acciones"]["Descanso"],
+            datos["acciones"]["Regreso"],
+            datos["acciones"]["Salida"]
+        ]
+        ws.append(fila)
+
+    # Estilizar cabecera
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center")
+
+    # Ajustar ancho de columnas
+    for column_cells in ws.columns:
+        length = max(len(str(cell.value)) if cell.value else 0 for cell in column_cells)
+        ws.column_dimensions[column_cells[0].column_letter].width = length + 4
+
+    # Guardar el archivo .xlsx
+    wb.save(resumen_path)
+    print(f"✅ Resumen diario guardado en: {resumen_path}")
+
 
 # ------------------------
 # FUNCIONES DE LA INTERFAZ
@@ -181,4 +240,11 @@ root.configure(bg="#34495e")
 root.geometry("600x500")
 root.minsize(500, 400)
 construir_teclado()
+
+def al_cerrar():
+    generar_resumen_diario()
+    root.destroy()
+
+root.protocol("WM_DELETE_WINDOW", al_cerrar)
+
 root.mainloop()
