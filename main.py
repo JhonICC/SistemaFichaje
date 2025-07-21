@@ -1,5 +1,5 @@
 import tkinter as tk
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import csv
 import os
@@ -7,7 +7,6 @@ import winsound
 from collections import defaultdict
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
-import os
 
 # ------------------------
 # CONFIGURACIÓN DE DATOS
@@ -59,6 +58,20 @@ def registrar_fichaje(id_input, nombre, accion):
         writer = csv.writer(file)
         writer.writerow([fecha, hora, id_input, nombre, accion])
 
+def calcular_duracion(hora_inicio, hora_fin):
+    """Devuelve la duración en formato HH:MM entre dos horas."""
+    if not hora_inicio or not hora_fin:
+        return timedelta()
+    formato = "%H:%M"
+    try:
+        inicio = datetime.strptime(hora_inicio, formato)
+        fin = datetime.strptime(hora_fin, formato)
+        if fin < inicio:  # por si salieran después de medianoche (no común, pero por si acaso)
+            fin += timedelta(days=1)
+        return fin - inicio
+    except ValueError:
+        return timedelta()
+
 def generar_resumen_diario():
     hoy = datetime.now().strftime("%Y-%m-%d")
     resumen_path = f"Resumenes/resumen_{hoy}.xlsx"
@@ -85,17 +98,32 @@ def generar_resumen_diario():
     ws = wb.active
     ws.title = "Resumen Diario"
 
-    headers = ["ID", "Nombre", "Entrada", "Descanso", "Regreso", "Salida"]
+    headers = ["ID", "Nombre", "Entrada", "Descanso", "Regreso", "Salida", "Descanso Total", "Trabajo Total"]
     ws.append(headers)
 
     for id_emp, datos in fichajes_por_empleado.items():
+        entrada = datos["acciones"]["Entrada"]
+        descanso = datos["acciones"]["Descanso"]
+        regreso = datos["acciones"]["Regreso"]
+        salida = datos["acciones"]["Salida"]
+
+        # Calcular tiempos
+        tiempo_descanso = calcular_duracion(descanso, regreso)
+        tiempo_trabajo = calcular_duracion(entrada, salida) - tiempo_descanso
+
+        # Formateo
+        def fmt(t):
+            return str(t)[:-3] if t else ""
+
         fila = [
             id_emp,
             datos["nombre"],
-            datos["acciones"]["Entrada"],
-            datos["acciones"]["Descanso"],
-            datos["acciones"]["Regreso"],
-            datos["acciones"]["Salida"]
+            entrada,
+            descanso,
+            regreso,
+            salida,
+            fmt(tiempo_descanso),
+            fmt(tiempo_trabajo)
         ]
         ws.append(fila)
 
@@ -109,7 +137,7 @@ def generar_resumen_diario():
         length = max(len(str(cell.value)) if cell.value else 0 for cell in column_cells)
         ws.column_dimensions[column_cells[0].column_letter].width = length + 4
 
-    # Guardar el archivo .xlsx
+    # Guardar archivo
     wb.save(resumen_path)
     print(f"✅ Resumen diario guardado en: {resumen_path}")
 
