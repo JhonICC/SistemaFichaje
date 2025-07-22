@@ -62,7 +62,7 @@ def calcular_duracion(hora_inicio, hora_fin):
     """Devuelve la duración en formato HH:MM entre dos horas."""
     if not hora_inicio or not hora_fin:
         return timedelta()
-    formato = "%H:%M"
+    formato = "%H:%M:%S"
     try:
         inicio = datetime.strptime(hora_inicio, formato)
         fin = datetime.strptime(hora_fin, formato)
@@ -113,7 +113,12 @@ def generar_resumen_diario():
 
         # Formateo
         def fmt(t):
-            return str(t)[:-3] if t else ""
+            if not t or t.total_seconds() == 0:
+                return "00:00"
+            total_minutes = int(t.total_seconds() // 60)
+            horas = total_minutes // 60
+            minutos = total_minutes % 60
+            return f"{horas:02}:{minutos:02}"
 
         fila = [
             id_emp,
